@@ -48,4 +48,8 @@ namespace gps {
         cameraFrontDirection = normalize(cameraFrontDirection);
         cameraRightDirection = glm::normalize(glm::cross(cameraFrontDirection, cameraUpDirection));
     }
+
+    glm::vec3 Camera::getCameraPosition() {
+        return cameraPosition;
+	}
 }
