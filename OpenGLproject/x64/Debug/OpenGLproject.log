@@ -1,13 +1,11 @@
 ﻿  main.cpp
-C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(180,17): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(181,17): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(185,19): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(186,19): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(187,13): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(188,13): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(710,26): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(1005,22): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-glew32s.lib(glew.obj) : warning LNK4099: PDB 'vc120.pdb' was not found with 'glew32s.lib(glew.obj)' or at 'C:\Users\mara\facultate\anul3\PG\OpenGLproject\x64\Debug\vc120.pdb'; linking object as if no debug info
-LINK : warning LNK4098: defaultlib 'MSVCRT' conflicts with use of other libs; use /NODEFAULTLIB:library
-LINK : warning LNK4098: defaultlib 'LIBCMT' conflicts with use of other libs; use /NODEFAULTLIB:library
+C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(213,17): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(214,17): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(218,19): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(219,19): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(220,13): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(221,13): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(664,26): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(847,23): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(897,22): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
   OpenGLproject.vcxproj -> C:\Users\mara\facultate\anul3\PG\OpenGLproject\x64\Debug\OpenGLproject.exe

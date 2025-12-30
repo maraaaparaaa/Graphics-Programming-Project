@@ -55,6 +55,12 @@ GLint projLocL;
 GLint lightDirLocL;
 GLint lightColorLocL;
 GLint normalMatrixLocL;
+GLint lightPosLoc;
+GLint pointLightColorLoc;
+
+bool sunOn = true;
+glm::vec3 daySunColor = glm::vec3(1.0f, 1.0f, 0.95f);
+glm::vec3 nightSunColor = glm::vec3(0.17f);
 
 // camera
 gps::Camera myCamera(
@@ -155,6 +161,8 @@ GLenum glCheckError_(const char *file, int line)
 }
 #define glCheckError() glCheckError_(__FILE__, __LINE__)
 
+void loadSky();
+
 void windowResizeCallback(GLFWwindow* window, int width, int height) {
 	fprintf(stdout, "Window resized! New width: %d , and height: %d\n", width, height);
 	//TODO
@@ -172,6 +180,31 @@ void keyboardCallback(GLFWwindow* window, int key, int scancode, int action, int
             pressedKeys[key] = false;
         }
     }
+
+    //sun
+    if (key == GLFW_KEY_N && action == GLFW_PRESS) {
+        sunOn = false;
+        loadSky();
+    }
+
+    if (key == GLFW_KEY_M && action == GLFW_PRESS) {
+        sunOn = true;
+        loadSky();
+    }
+
+    //scene view 
+    if (pressedKeys[GLFW_KEY_1]) {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); // solid mode
+    }
+
+    if (pressedKeys[GLFW_KEY_2]) {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // wireframe mode
+    }
+
+    if (pressedKeys[GLFW_KEY_3]) {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_POINT); // poligonal mode
+    }
+
 }
 
 void mouseCallback(GLFWwindow* window, double xpos, double ypos) {
@@ -226,18 +259,6 @@ void processMovement() {
         myCamera.move(gps::MOVE_RIGHT, cameraSpeed);
     }
 
-    //scene view 
-	if (pressedKeys[GLFW_KEY_1]) {
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); // solid mode
-    }
-
-    if (pressedKeys[GLFW_KEY_2]) {
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // wireframe mode
-    }
-
-    if (pressedKeys[GLFW_KEY_3]) {
-        glPolygonMode(GL_FRONT_AND_BACK, GL_POINT); // poligonal mode
-	}
 }
 
 void initOpenGLWindow() {
@@ -264,12 +285,24 @@ void initOpenGLState() {
 	glFrontFace(GL_CCW); // GL_CCW for counter clock-wise
 }
 
+void loadSky() {
+
+    if (sunOn) {
+        sky.LoadModel("models/SkyDome/sky.obj");
+        skyTexture = sky.ReadTextureFromFile("models/SkyDome/skydomeBIG.png");
+    }
+    else {
+        sky.LoadModel("models/SkyDome/nightSky.obj");
+        skyTexture = sky.ReadTextureFromFile("models/SkyDome/nightSky.jpg");
+    }
+    
+}
+
 void initModels() {
 	matterhorn.LoadModel("models/Matterhorn/Matterhornbig.obj");
 	matterhornTexture = matterhorn.ReadTextureFromFile("models/Matterhorn/Matterhorn.jpg");
 
-	sky.LoadModel("models/SkyDome/sky.obj");
-	skyTexture = sky.ReadTextureFromFile("models/SkyDome/skydomeBIG.png");
+    loadSky();
 
 	penguin.LoadModel("models/penguin/penguin1.obj");
 	penguinTexture = penguin.ReadTextureFromFile("models/penguin/Penguin Diffuse Color.png");
@@ -374,9 +407,6 @@ void initShaders() {
     lightShader.loadShader(
         "shaders/lightShader.vert",
 		"shaders/lightShader.frag");
-	/*fireShader.loadShader(
-        "shaders/fire.vert",
-		"shaders/fire.frag");*/
     fireShader.loadShader("shaders/fire_instanced.vert", "shaders/fire_instanced.frag");  // nou!
 
 }
@@ -419,7 +449,7 @@ void initUniforms() {
     glUniformMatrix4fv(modelLocL, 1, GL_FALSE, glm::value_ptr(model));
     glUniformMatrix4fv(viewLocL, 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(projLocL, 1, GL_FALSE, glm::value_ptr(projection));
-
+            // directional light
     lightDirLoc = glGetUniformLocation(lightShader.shaderProgram, "lightDirEye");
     lightColorLoc = glGetUniformLocation(lightShader.shaderProgram, "lightColor");
     normalMatrixLocL = glGetUniformLocation(lightShader.shaderProgram, "normalMatrix");
@@ -430,6 +460,15 @@ void initUniforms() {
     glUniform3fv(lightDirLoc, 1, glm::value_ptr(lightDir));
     glUniform3fv(lightColorLoc, 1, glm::value_ptr(lightColor));
 
+            // point light
+    lightPosLoc = glGetUniformLocation(lightShader.shaderProgram, "lightPosEye");
+    pointLightColorLoc = glGetUniformLocation(lightShader.shaderProgram, "pointLightColor");
+
+    glm::vec3 pointLightColor = glm::vec3(3.0f, 2.0f, 0.8f); // fire color
+    glm::vec4 lightPosEye = view * glm::vec4(firePos, 1.0f);
+
+    glUniform3fv(lightPosLoc, 1, glm::value_ptr(glm::vec3(lightPosEye)));
+    glUniform3fv(pointLightColorLoc, 1, glm::value_ptr(pointLightColor));
 
 	//fire shader uniforms
     fireShader.useShaderProgram();
@@ -549,91 +588,6 @@ void renderAstronaut(gps::Shader shader) {
 	astronaut.Draw(shader);
 }
 
-//void respawnParticle(Particle& particle, glm::vec3 firePos) {
-//    
-//	// decide if it is fire or smoke
-//	particle.isFire = ((float)rand() / RAND_MAX) < 0.7f; // 70% fire, 30% smoke
-//
-//	// START POSITION
-//	// spawn inside a circle, at the base of the fire
-//	float angle = ((float)rand() / RAND_MAX) * 2.0f * 3.14159f; // random angle
-//	float radius = sqrt((float)rand() / RAND_MAX) * 15.0f; // random radius (sqrt for uniform distribution)
-//	float yOffset = ((float)rand() / RAND_MAX) * 10.0f; // random height offset, y variation
-//
-//	particle.pos = firePos + glm::vec3(radius * cos(angle), yOffset, radius * sin(angle));
-//
-//	// VELOCITY
-//	if (particle.isFire) { // fire moves faster, chaotic movement
-//        particle.velocity = glm::vec3(
-//            (((float)rand() / RAND_MAX) - 0.5f) * 3.0f, // x velocity
-//            15.0f + ((float)rand() / RAND_MAX) * 10.0f,   // y velocity (upwards)
-//            (((float)rand() / RAND_MAX) - 0.5f) * 3.0f  // z velocity
-//        );
-//
-//        // ===== CULORI CU MAI MULT CONTRAST =====
-//        float temp = (float)rand() / RAND_MAX;
-//        if (temp < 0.15f) {
-//            particle.color = glm::vec4(1.0f, 0.95f, 0.3f, 0.9f);
-//        }
-//        else if (temp < 0.45f) {
-//            // Portocaliu DOMINANT (30%)
-//            particle.color = glm::vec4(1.0f, 0.45f, 0.05f, 0.75f);
-//        }
-//        else if (temp < 0.75f) {
-//            // Rosu aprins (30%)
-//            particle.color = glm::vec4(0.95f, 0.2f, 0.0f, 0.65f);
-//        }
-//        else {
-//            // Rosu inchis (25%)
-//            particle.color = glm::vec4(0.7f, 0.1f, 0.0f, 0.55f);
-//        }
-//
-//        // ===== MaRIMI VARIATE - world units =====
-//        particle.size = 0.5f + ((float)rand() / RAND_MAX) * 1.0f;  // 50-130 world units
-//
-//        particle.maxLife = 0.4f + ((float)rand() / RAND_MAX) * 0.3f;  
-//        
-//
-//		////warm colors for fire: yellor -> orange -> red
-//		//float temp = (float)rand() / RAND_MAX;
-//  //      if (temp < 0.33f) {
-//		//	particle.color = glm::vec4(1.0f, 1.0f, 0.3f, 1.0f); // shinny yellow - center of the fire
-//  //      }
-//		//else if (temp < 0.66f) {    
-//		//	particle.color = glm::vec4(1.0f, 0.6f, 0.1f, 0.9f); // orange
-//  //      }
-//  //      else {
-//		//	particle.color = glm::vec4(1.0f, 0.2f, 0.0f, 0.8f); // red - outer part of the fire
-//  //      }
-//
-//  //      particle.size = 800.0f + ((float)rand() / RAND_MAX) * 400.0f;  // 800-1200 (ajust if needed)
-//  //      particle.maxLife = 0.6f + ((float)rand() / RAND_MAX) * 0.4f;  // 0.6-1.0 seconds
-//    }
-//    else {
-//		//smoke moves slower, more uniform movement
-//        particle.velocity = glm::vec3(
-//            (((float)rand() / RAND_MAX) - 0.5f) * 2.0f, // x velocity
-//            8.0f + ((float)rand() / RAND_MAX) * 5.0f,   // y velocity (upwards)
-//            (((float)rand() / RAND_MAX) - 0.5f) * 2.0f  // z velocity
-//        );
-//
-//        float darkness = 0.15f + ((float)rand() / RAND_MAX) * 0.1f;
-//        particle.color = glm::vec4(darkness, darkness, darkness, 0.25f);  // alpha redus!
-//
-//        particle.size = 100.0f + ((float)rand() / RAND_MAX) * 100.0f;  // mai mare
-//        particle.maxLife = 1.2f + ((float)rand() / RAND_MAX) * 0.8f;
-//
-//		////gray colors for smoke
-//		//particle.color = glm::vec4(0.4, 0.4, 0.4, 0.6f);
-//
-//		//particle.size = 1200.0f + ((float)rand() / RAND_MAX) * 800.0f; // smoke particles are larger
-//  //      particle.maxLife = 1.2f + ((float)rand() / RAND_MAX) * 0.8f;    // lives longer
-//
-//	}
-//
-//	particle.life = particle.maxLife;
-//}
-
 void renderParticles(gps::Shader& shader, glm::vec3 firePos, GLuint particleVAO) {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE);  // Additive blending pentru foc
@@ -743,22 +697,6 @@ void respawnParticle(Particle& particle, glm::vec3 firePos) {
             15.0f + ((float)rand() / RAND_MAX) * 10.0f,   // y ( sus)
             (((float)rand() / RAND_MAX) - 0.5f) * 4.0f   // z
         );
-
-        //// CULORI VIBRANTE pentru foc
-        //float temp = (float)rand() / RAND_MAX;
-        //if (temp < 0.0f) {
-        //    particle.color = glm::vec4(1.0f, 1.0f, 0.4f, 1.0f);
-        //}
-        //else if (temp < 0.5f) {
-        //    // Portocaliu intens
-        //    particle.color = glm::vec4(1.0f, 0.5f, 0.1f, 0.9f);
-        //}
-        //else if (temp < 0.8f) {
-        //    particle.color = glm::vec4(0.95f, 0.2f, 0.05f, 0.8f);
-        //}
-        //else {
-        //    particle.color = glm::vec4(0.7f, 0.1f, 0.0f, 0.7f);
-        //}
 
         // CULOARE BAZAT PE DISTAN DE LA CENTRU
         float distanceRatio = radius / 150.0f;  // 0.0 = centru, 1.0 = margine
@@ -881,64 +819,6 @@ void updateParticles(float deltaTime, glm::vec3 firePos) {
     }
 }
 
-//void renderParticles(gps::Shader& shader, glm::vec3 firePos, GLuint particleVAO) {
-//    glEnable(GL_BLEND);
-//	glBlendFunc(GL_SRC_ALPHA, GL_ONE); // additive blending for fire and smoke - when 2 particles overlap, their colors add up
-//    glDepthMask(GL_FALSE); // Nu scrie in depth buffer pentru transparenta corecta
-//	glDisable(GL_CULL_FACE);
-//
-//    shader.useShaderProgram();
-//
-//    // Actualizeaza view si projection
-//    GLint viewLocFire = glGetUniformLocation(shader.shaderProgram, "view");
-//    GLint projLocFire = glGetUniformLocation(shader.shaderProgram, "projection");
-//    glUniformMatrix4fv(viewLocFire, 1, GL_FALSE, glm::value_ptr(view));
-//    glUniformMatrix4fv(projLocFire, 1, GL_FALSE, glm::value_ptr(projection));
-//
-//    // data for shaders
-//    
-//	std::vector<float> particleData;
-//	particleData.reserve(MAX_PARTICLES * 10); // 10 floats per particle
-//    
-//    for (int i = 0; i < MAX_PARTICLES; i++) {
-//        Particle& p = particles[i];
-//        if (p.life > 0.0f) {
-//            // position
-//            particleData.push_back(p.pos.x);
-//            particleData.push_back(p.pos.y);
-//            particleData.push_back(p.pos.z);
-//            // color
-//            particleData.push_back(p.color.r);
-//            particleData.push_back(p.color.g);
-//            particleData.push_back(p.color.b);
-//            particleData.push_back(p.color.a);
-//            // size
-//            particleData.push_back(p.size);
-//            // life
-//            particleData.push_back(p.life / p.maxLife);
-//			// padding for alignment to 10 floats
-//            particleData.push_back(0.0f); // unused
-//        }
-//    }
-//    
-//    // Update buffer data
-//	glBindVertexArray(particleVAO);
-//    glBindBuffer(GL_ARRAY_BUFFER, particleVBO);
-//	glBufferSubData(GL_ARRAY_BUFFER, 0, particleData.size() * sizeof(float), particleData.data()); // update buffer with active particles
-//    
-//    // Render particles
-//	glEnable(GL_PROGRAM_POINT_SIZE);  // allows setting point size in vertex shader
-//    glDrawArrays(GL_POINTS, 0, particleData.size() / 10); // 10 floats per particle
-//    
-//	//cleanup
-//    glBindVertexArray(0);
-//    glDepthMask(GL_TRUE);
-//	glDisable(GL_BLEND);
-//	glEnable(GL_CULL_FACE);
-//}
-
-
-
 void renderScene() {
 	
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -959,6 +839,15 @@ void renderScene() {
     glUniformMatrix4fv(viewLocL, 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(projLocL, 1, GL_FALSE, glm::value_ptr(projection)); //for window resize
 
+    // transfrom light position from world space to view space
+    glm::vec4 lightPosEye = view * glm::vec4(firePos, 1.0f);
+    glUniform3fv(lightPosLoc, 1, glm::value_ptr(glm::vec3(lightPosEye)));
+
+    // time for light shader
+    float currentTime = glfwGetTime();
+    GLint timeLoc = glGetUniformLocation(lightShader.shaderProgram, "time");
+    glUniform1f(timeLoc, currentTime);
+
     // update model rotation (Matterhorn)
     model = glm::rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(0, 1, 0));
     glUniformMatrix4fv(modelLocL, 1, GL_FALSE, glm::value_ptr(model));
@@ -967,6 +856,9 @@ void renderScene() {
 	//update normal matrix for lighting
     normalMatrix = glm::mat3(glm::transpose(glm::inverse(view * model)));
     glUniformMatrix3fv(normalMatrixLocL, 1, GL_FALSE, glm::value_ptr(normalMatrix));
+
+    glm::vec3 currentLightColor = sunOn ? daySunColor : nightSunColor;
+    glUniform3fv(lightColorLoc, 1, glm::value_ptr(currentLightColor));
 
 	renderMatterhornParts(lightShader);
 	renderPenguin(lightShader);
