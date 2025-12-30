@@ -79,6 +79,11 @@ gps::Model3D m[N];
 gps::Model3D penguin;
 gps::Model3D astronaut;
 gps::Model3D firePlace;
+gps::Model3D tent;
+
+gps::Model3D penguinBody;
+gps::Model3D penguinWingL;
+gps::Model3D penguinWingR;
 
 GLfloat angle;
 
@@ -90,6 +95,7 @@ gps::Shader fireShader;
 //textures 
 GLuint matterhornTexture, skyTexture, mTexture[N], penguinTexture, astronautTexture;
 GLuint fireTexture;
+GLuint tentTexture;
 
 // mouse variables
 float lastX = 400, lastY = 300; // initial pos, middle
@@ -307,6 +313,15 @@ void initModels() {
 	penguin.LoadModel("models/penguin/penguin1.obj");
 	penguinTexture = penguin.ReadTextureFromFile("models/penguin/Penguin Diffuse Color.png");
 
+    penguinBody.LoadModel("models/penguin/penguinBody.obj");
+    penguinTexture = penguin.ReadTextureFromFile("models/penguin/Penguin Diffuse Color.png");
+
+    penguinWingL.LoadModel("models/penguin/penguinWingL.obj");
+    penguinTexture = penguin.ReadTextureFromFile("models/penguin/Penguin Diffuse Color.png");
+
+    penguinWingR.LoadModel("models/penguin/penguinWingR.obj");
+    penguinTexture = penguin.ReadTextureFromFile("models/penguin/Penguin Diffuse Color.png");
+
 	astronaut.LoadModel("models/astronaut/astronaut.obj");
 	astronautTexture = astronaut.ReadTextureFromFile("models/astronaut/texture_diffuse.png");
 
@@ -317,7 +332,10 @@ void initModels() {
 		mTexture[i] = m[i].ReadTextureFromFile(texturePath.c_str());
 	}
 
-	firePlace.LoadModel("models/Fireplace/fireplace.obj");
+    tent.LoadModel("models/Tent/tent.obj");
+    tentTexture = tent.ReadTextureFromFile("models/Tent/tentTexture.jpg");
+
+	firePlace.LoadModel("models/Fireplace/fire_place.obj");
 	fireTexture = firePlace.ReadTextureFromFile("models/Fireplace/texture/fireTex.png");
 
     for (int i = 0; i < MAX_PARTICLES; i++)
@@ -372,32 +390,7 @@ void initModels() {
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
- //   glGenVertexArrays(1, &particleVAO);
- //   glGenBuffers(1, &particleVBO);
 
- //   glBindVertexArray(particleVAO);
- //   glBindBuffer(GL_ARRAY_BUFFER, particleVBO);
-	//glBufferData(GL_ARRAY_BUFFER, MAX_PARTICLES * sizeof(float) * 10, nullptr, GL_DYNAMIC_DRAW); // 10 floats per particle: pos(3), color(4), size(1), life(1), padding(1)
-
- //   // position attribute
- //   glEnableVertexAttribArray(0); //location 0 : position x,y,z
- //   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)0);
-
-	////location 1 : color r,g,b,a
-	//glEnableVertexAttribArray(1);
-	//glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(3 * sizeof(float)));
-
-
-	////location 2 : size
-	//glEnableVertexAttribArray(2);
-	//glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(7 * sizeof(float)));
-
-	////location 3 : life
-	//glEnableVertexAttribArray(3);
-	//glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, 10 * sizeof(float), (void*)(8 * sizeof(float)));
-
- //   glBindBuffer(GL_ARRAY_BUFFER, 0);
- //   glBindVertexArray(0);
 }
 
 void initShaders() {
@@ -557,6 +550,90 @@ void renderPenguin(gps::Shader shader) {
 	glUniform1i(glGetUniformLocation(shader.shaderProgram, "diffuseTexture"), 0);
     glBindTexture(GL_TEXTURE_2D, penguinTexture);
 	penguin.Draw(shader);
+}
+
+void renderHiPenguin(gps::Shader shader) {
+    shader.useShaderProgram();
+
+    // lighting 
+    GLint objLightLoc =
+        glGetUniformLocation(lightShader.shaderProgram, "objectLightMultiplier");
+    glUniform1f(objLightLoc, 3.0f);
+
+    GLint shininessLoc =
+        glGetUniformLocation(lightShader.shaderProgram, "shininess");
+    GLint specStrengthLoc =
+        glGetUniformLocation(lightShader.shaderProgram, "specularStrength");
+
+    glUniform1f(shininessLoc, 6.0f);
+    glUniform1f(specStrengthLoc, 0.15f);
+
+    // texture
+    glActiveTexture(GL_TEXTURE0);
+    glUniform1i(glGetUniformLocation(shader.shaderProgram, "diffuseTexture"), 0);
+    glBindTexture(GL_TEXTURE_2D, penguinTexture);
+
+	// time for animation
+    float t = glfwGetTime();
+    float wingAngle = sin(t * 4.0f) * glm::radians(30.0f);
+
+    
+    glm::vec3 penguinPos = glm::vec3(0.0f, 0.0f, 0.0f);
+
+    // ===== BODY =====
+    glm::mat4 bodyModel = glm::translate(glm::mat4(1.0f), penguinPos);
+
+    glUniformMatrix4fv(modelLocL, 1, GL_FALSE, glm::value_ptr(bodyModel));
+    normalMatrix = glm::mat3(glm::transpose(glm::inverse(view * bodyModel)));
+    glUniformMatrix3fv(normalMatrixLocL, 1, GL_FALSE, glm::value_ptr(normalMatrix));
+    penguinBody.Draw(shader);
+
+    // ===== WING LEFT =====
+    glm::vec3 wingLPivot = glm::vec3(-2068.25f, -884.082f, 5489.76f);
+    glm::mat4 wingLModel = bodyModel *
+		glm::translate(glm::mat4(1.0f), wingLPivot) *   // move pivot to origin
+        glm::rotate(glm::mat4(1.0f), wingAngle, glm::vec3(0, 0, 1)) *  // rotate
+		glm::translate(glm::mat4(1.0f), -wingLPivot);  // move back
+
+    glUniformMatrix4fv(modelLocL, 1, GL_FALSE, glm::value_ptr(wingLModel));
+    normalMatrix = glm::mat3(glm::transpose(glm::inverse(view * wingLModel)));
+    glUniformMatrix3fv(normalMatrixLocL, 1, GL_FALSE, glm::value_ptr(normalMatrix));
+    penguinWingL.Draw(shader);
+
+    // ===== WING RIGHT =====
+    glm::vec3 wingRPivot = glm::vec3(-2008.24f, -877.652f, 5558.12f);
+
+    glm::mat4 wingRModel = bodyModel *
+        glm::translate(glm::mat4(1.0f), wingRPivot) *
+        glm::rotate(glm::mat4(1.0f), -wingAngle, glm::vec3(0, 0, 1)) *
+        glm::translate(glm::mat4(1.0f), -wingRPivot);
+
+    glUniformMatrix4fv(modelLocL, 1, GL_FALSE, glm::value_ptr(wingRModel));
+    normalMatrix = glm::mat3(glm::transpose(glm::inverse(view * wingRModel)));
+    glUniformMatrix3fv(normalMatrixLocL, 1, GL_FALSE, glm::value_ptr(normalMatrix));
+    penguinWingR.Draw(shader);
+}
+
+
+void renderTent(gps::Shader shader) {
+    shader.useShaderProgram();
+
+    GLint objLightLoc =
+        glGetUniformLocation(lightShader.shaderProgram, "objectLightMultiplier");
+    glUniform1f(objLightLoc, 1.0f);
+    GLint shininessLoc =
+        glGetUniformLocation(lightShader.shaderProgram, "shininess");
+    GLint specStrengthLoc =
+        glGetUniformLocation(lightShader.shaderProgram, "specularStrength");
+
+    glUniform1f(shininessLoc, 32.0f);
+    glUniform1f(specStrengthLoc, 0.3f);
+
+    glActiveTexture(GL_TEXTURE0);
+    glUniform1i(glGetUniformLocation(shader.shaderProgram, "diffuseTexture"), 0);
+
+    glBindTexture(GL_TEXTURE_2D, tentTexture);
+    tent.Draw(shader);
 }
 
 void renderFirePlace(gps::Shader shader) {
@@ -863,7 +940,10 @@ void renderScene() {
 	renderMatterhornParts(lightShader);
 	renderPenguin(lightShader);
 	renderAstronaut(lightShader);
+    renderTent(lightShader);
     renderFirePlace(lightShader);
+    renderHiPenguin(lightShader);
+
 
 }
 
