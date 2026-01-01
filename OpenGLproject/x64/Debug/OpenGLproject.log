@@ -1,13 +1,16 @@
 ﻿  main.cpp
-C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(249,17): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(250,17): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(254,19): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(255,19): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(256,13): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(257,13): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(640,13): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(763,13): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(926,26): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(1137,23): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(1192,22): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(262,17): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(263,17): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(267,19): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(268,19): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(269,13): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(270,13): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(676,13): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(802,13): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(1067,26): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(1278,23): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\mara\facultate\anul3\PG\OpenGLproject\OpenGLproject\main.cpp(1340,22): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+glew32s.lib(glew.obj) : warning LNK4099: PDB 'vc120.pdb' was not found with 'glew32s.lib(glew.obj)' or at 'C:\Users\mara\facultate\anul3\PG\OpenGLproject\x64\Debug\vc120.pdb'; linking object as if no debug info
+LINK : warning LNK4098: defaultlib 'MSVCRT' conflicts with use of other libs; use /NODEFAULTLIB:library
+LINK : warning LNK4098: defaultlib 'LIBCMT' conflicts with use of other libs; use /NODEFAULTLIB:library
   OpenGLproject.vcxproj -> C:\Users\mara\facultate\anul3\PG\OpenGLproject\x64\Debug\OpenGLproject.exe
