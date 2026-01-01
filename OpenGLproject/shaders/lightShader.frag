@@ -3,6 +3,7 @@
 in vec2 passTexture;
 in vec3 normalEye;
 in vec3 fragPosEye;
+in vec4 fragPosLightSpace;
 
 out vec4 fragmentColour;
 
@@ -22,10 +23,56 @@ uniform vec3 pointLightColor;
 
 uniform float time;
 
+// shadow map
+uniform sampler2D shadowMap;
+
 // attenuation for point light
 float constant = 1.0f;
 float linear = 0.0001f;
 float quadratic = 0.0000025f;
+
+// ===== SHADOW CALCULATION =====
+float ShadowCalculation(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir)
+{
+    // Perspective divide
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    
+    // Transform to [0,1] range
+    projCoords = projCoords * 0.5 + 0.5;
+    
+    // Outside the light frustum → no shadow
+    if(projCoords.z > 1.0)
+        return 0.0;
+
+    // Depth of current fragment from light's perspective
+    float currentDepth = projCoords.z;
+
+    float closestDepth = texture(shadowMap, projCoords.xy).r;
+
+    // Bias to avoid shadow acne (small, dependent on angle)
+    float bias = max(0.002 * (1.0 - dot(normal, lightDir)), 0.0005);
+
+    //Shadow accumulator
+    float shadow = 0.0;
+
+    //Size of a texel in shadow map
+    vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
+
+    //PCF 5x5 kernel for soft shadows
+    for(int x = -2; x <= 2; ++x)
+    {
+       for(int y = -2; y <= 2; ++y)
+       {
+           float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texelSize).r;
+           shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
+       }
+   }
+
+   shadow /= 25.0; // Average over 5x5 samples
+
+    return shadow;
+}
+
 
 void main()
 {
@@ -44,6 +91,9 @@ void main()
     vec3 specular = specularStrength * spec * lightColor;
     
     vec3 textColor = texture(diffuseTexture, passTexture).rgb;
+
+    // shadow calculation
+    float shadow = ShadowCalculation(fragPosLightSpace, N, L);
 
     //point light
 
@@ -85,8 +135,8 @@ void main()
     specular_point *= att;
     ambient_point *= att;
 
-    vec3 result = ambient * textColor + ambient * textColor; 
-    result += (diffuse + specular) * textColor; // directional
+    vec3 result = ambient * textColor + ambient_point * textColor; 
+    result += (1.0 - shadow) * (diffuse + specular) * textColor; // directional light WITH SHADOWS
     result += (diffuse_point + specular_point) * textColor; // point light
     result *= objectLightMultiplier;
 

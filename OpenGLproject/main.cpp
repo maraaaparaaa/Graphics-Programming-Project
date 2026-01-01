@@ -47,6 +47,7 @@ GLint projectionLoc;
 GLint normalMatrixLoc;
 GLint lightDirLoc;
 GLint lightColorLoc;
+GLint shadowMapLoc;
 
 // light shader uniform locations
 GLint modelLocL;
@@ -91,6 +92,9 @@ GLfloat angle;
 gps::Shader myCustomShader;
 gps::Shader lightShader;
 gps::Shader fireShader;
+gps::Shader depthMapShader;
+
+bool renderShadows = true;
 
 //textures 
 GLuint matterhornTexture, skyTexture, mTexture[N], penguinTexture, astronautTexture;
@@ -103,6 +107,17 @@ float yaw = -90.0f;             // camera direction -z
 float pitch = 0.0f;
 bool firstMouse = true;         // avoid jumps at first move
 
+// Shadow mapping - directional light
+GLuint shadowMapFBO;
+GLuint shadowMapTexture;
+const unsigned int SHADOW_WIDTH = 8192, SHADOW_HEIGHT = 8192;
+glm::mat4 lightSpaceMatrix;
+
+// Shadow mapping - point light (cubemap for all directions)
+GLuint pointShadowMapFBO;
+GLuint pointShadowCubemap;
+const unsigned int POINT_SHADOW_WIDTH = 1024, POINT_SHADOW_HEIGHT = 1024;
+std::vector<glm::mat4> pointLightMatrices;
 
 //fire
 struct Particle {
@@ -119,7 +134,7 @@ const int MAX_PARTICLES = 1000;
 Particle particles[MAX_PARTICLES];
 
 //object positions
-glm::vec3 firePos = glm::vec3(-2070.814209f, -900.905457f, 5929.203125f);//glm::vec3(0.0f, 5.0f, 15.0f);
+glm::vec3 firePos = glm::vec3(-2096.814209f, -980.905457f, 5921.6f);
 
 GLuint particleVAO, particleVBO;
 
@@ -210,6 +225,21 @@ void keyboardCallback(GLFWwindow* window, int key, int scancode, int action, int
     if (pressedKeys[GLFW_KEY_3]) {
         glPolygonMode(GL_FRONT_AND_BACK, GL_POINT); // poligonal mode
     }
+
+    // Toggle shadows
+    if (key == GLFW_KEY_O && action == GLFW_PRESS) {
+        renderShadows = !renderShadows;
+        std::cout << "Shadows " << (renderShadows ? "ON" : "OFF") << std::endl;
+    }
+
+    //sun position
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)    lightDir.y += 0.01f;
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)  lightDir.y -= 0.01f;
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)  lightDir.x -= 0.01f;
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) lightDir.x += 0.01f;
+
+    // normalizezi mereu
+    lightDir = glm::normalize(lightDir);
 
 }
 
@@ -394,14 +424,51 @@ void initModels() {
 }
 
 void initShaders() {
-	myCustomShader.loadShader(
-        "shaders/shaderStart.vert", 
-        "shaders/shaderStart.frag");    
-    lightShader.loadShader(
-        "shaders/lightShader.vert",
-		"shaders/lightShader.frag");
-    fireShader.loadShader("shaders/fire_instanced.vert", "shaders/fire_instanced.frag");  // nou!
+    try {
+        myCustomShader.loadShader(
+            "shaders/shaderStart.vert",
+            "shaders/shaderStart.frag");
+        std::cout << "myCustomShader loaded successfully" << std::endl;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Failed to load myCustomShader: " << e.what() << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    try {
+        lightShader.loadShader(
+            "shaders/lightShader.vert",
+            "shaders/lightShader.frag");
+        std::cout << "lightShader loaded successfully" << std::endl;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Failed to load lightShader: " << e.what() << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    try {
+        fireShader.loadShader("shaders/fire_instanced.vert", "shaders/fire_instanced.frag");
+        std::cout << "fireShader loaded successfully" << std::endl;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Failed to load fireShader: " << e.what() << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    try {
+        depthMapShader.loadShader("shaders/depthMap.vert", "shaders/depthMap.frag");
+        std::cout << "depthMapShader loaded successfully" << std::endl;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Failed to load depthMapShader: " << e.what() << std::endl;
+        exit(EXIT_FAILURE);
+    }
 
+	/*myCustomShader.loadShader(
+        "shaders/shaderStart.vert", 
+        "shaders/shaderStart.frag"); */   
+    /*lightShader.loadShader(
+        "shaders/lightShader.vert",
+		"shaders/lightShader.frag");*/
+    /*fireShader.loadShader("shaders/fire_instanced.vert", "shaders/fire_instanced.frag"); */ 
+    //depthMapShader.loadShader("shaders/depthMap.vert", "shaders/depthMap.frag");
 }
 
 void initUniforms() {
@@ -447,8 +514,8 @@ void initUniforms() {
     lightColorLoc = glGetUniformLocation(lightShader.shaderProgram, "lightColor");
     normalMatrixLocL = glGetUniformLocation(lightShader.shaderProgram, "normalMatrix");
 
-    glm::vec3 lightDir = glm::normalize(glm::vec3(0.0f, -1.0f, -0.3f));
-    glm::vec3 lightColor = glm::vec3(1.0f, 1.0f, 0.95f); // soare
+    lightDir = glm::normalize(glm::vec3(0.0f, -1.0f, -0.3f));
+    lightColor = glm::vec3(1.0f, 1.0f, 0.95f); // soare
 
     glUniform3fv(lightDirLoc, 1, glm::value_ptr(lightDir));
     glUniform3fv(lightColorLoc, 1, glm::value_ptr(lightColor));
@@ -463,6 +530,11 @@ void initUniforms() {
     glUniform3fv(lightPosLoc, 1, glm::value_ptr(glm::vec3(lightPosEye)));
     glUniform3fv(pointLightColorLoc, 1, glm::value_ptr(pointLightColor));
 
+    // shadow map shader uniforms
+    lightShader.useShaderProgram();
+    GLint shadowMapLoc = glGetUniformLocation(lightShader.shaderProgram, "shadowMap");
+    glUniform1i(shadowMapLoc, 1); // texture unit 1
+
 	//fire shader uniforms
     fireShader.useShaderProgram();
 
@@ -471,6 +543,120 @@ void initUniforms() {
 
     glUniformMatrix4fv(viewLocFire, 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(projLocFire, 1, GL_FALSE, glm::value_ptr(projection));
+
+}
+
+void initShadowMap() {
+    // ===== DIRECTIONAL LIGHT SHADOW MAP =====
+    glGenFramebuffers(1, &shadowMapFBO);
+
+    glGenTextures(1, &shadowMapTexture);
+    glBindTexture(GL_TEXTURE_2D, shadowMapTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT,
+        SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+
+	// attach depth texture as FBO's depth buffer
+    glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowMapTexture, 0);
+    glDrawBuffer(GL_NONE);
+    glReadBuffer(GL_NONE);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+
+    // ===== POINT LIGHT SHADOW MAP (CUBEMAP) =====
+    /*glGenFramebuffers(1, &pointShadowMapFBO);
+
+    glGenTextures(1, &pointShadowCubemap);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, pointShadowCubemap);
+    for (unsigned int i = 0; i < 6; ++i) {
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_DEPTH_COMPONENT,
+            POINT_SHADOW_WIDTH, POINT_SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, pointShadowMapFBO);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, pointShadowCubemap, 0);
+    glDrawBuffer(GL_NONE);
+    glReadBuffer(GL_NONE);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);*/
+}
+
+void calculateLightSpaceMatrix() {
+
+	// ligth position far away in the light direction
+	glm::vec3 lightPos = -lightDir * 15000.0f; // ajust distance as needed
+
+    glm::mat4 lightProjection = glm::ortho(-20000.0f, 20000.0f, -20000.0f, 20000.0f, 1.0f, 50000.0f);
+    glm::mat4 lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+
+    lightSpaceMatrix = lightProjection * lightView;
+}
+
+void renderDepthMap(gps::Shader& shader, bool isPointLight = false) {
+
+    if (!isPointLight) {
+        shader.useShaderProgram();
+        GLint lightSpaceMatrixLoc = glGetUniformLocation(shader.shaderProgram, "lightSpaceMatrix");
+        glUniformMatrix4fv(lightSpaceMatrixLoc, 1, GL_FALSE, glm::value_ptr(lightSpaceMatrix));
+    }
+
+    GLint modelLoc = glGetUniformLocation(shader.shaderProgram, "model");
+
+	// render scene objects to depth map
+    glm::mat4 objectModel = glm::mat4(1.0f);
+
+    // Penguin
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(objectModel));
+    penguin.Draw(shader);
+
+    // Astronaut
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(objectModel));
+    astronaut.Draw(shader);
+
+    // Tent
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(objectModel));
+    tent.Draw(shader);
+
+    // FirePlace
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(objectModel));
+    firePlace.Draw(shader);
+
+    // HiPenguin parts
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(objectModel));
+    penguinBody.Draw(shader);
+    penguinWingL.Draw(shader);
+    penguinWingR.Draw(shader);
+
+    float t = glfwGetTime();
+    float wingAngle = sin(t * 4.0f) * glm::radians(30.0f);
+
+    glm::vec3 wingLPivot = glm::vec3(-2068.25f, -884.082f, 5489.76f);
+    glm::mat4 wingLModel = objectModel *
+        glm::translate(glm::mat4(1.0f), wingLPivot) *
+        glm::rotate(glm::mat4(1.0f), wingAngle, glm::vec3(0, 0, 1)) *
+        glm::translate(glm::mat4(1.0f), -wingLPivot);
+
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(wingLModel));
+    penguinWingL.Draw(shader);
+
+    glm::vec3 wingRPivot = glm::vec3(-2008.24f, -877.652f, 5558.12f);
+    glm::mat4 wingRModel = objectModel *
+        glm::translate(glm::mat4(1.0f), wingRPivot) *
+        glm::rotate(glm::mat4(1.0f), -wingAngle, glm::vec3(0, 0, 1)) *
+        glm::translate(glm::mat4(1.0f), -wingRPivot);
+
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(wingRModel));
+    penguinWingR.Draw(shader);
 
 }
 
@@ -614,7 +800,6 @@ void renderHiPenguin(gps::Shader shader) {
     penguinWingR.Draw(shader);
 }
 
-
 void renderTent(gps::Shader shader) {
     shader.useShaderProgram();
 
@@ -753,15 +938,15 @@ void renderParticles(gps::Shader& shader, glm::vec3 firePos, GLuint particleVAO)
 void respawnParticle(Particle& particle, glm::vec3 firePos) {
 
     // Decide dac e foc sau fum (70% foc, 30% fum)
-    particle.isFire = ((float)rand() / RAND_MAX) < 0.9f;
+    particle.isFire = ((float)rand() / RAND_MAX) < 0.8f;
 
     float angle = ((float)rand() / RAND_MAX) * 20.0f * 3.14159f;
 
     // VELOCITATE
     if (particle.isFire) {
 
-        float radius = sqrt((float)rand() / RAND_MAX) * 150.0f;
-        float yOffset = ((float)rand() / RAND_MAX) * 200.0f;
+        float radius = sqrt((float)rand() / RAND_MAX) * 85.0f;
+        float yOffset = ((float)rand() / RAND_MAX) * 150.0f;
 
         particle.pos = firePos + glm::vec3(
             radius * cos(angle),
@@ -824,7 +1009,7 @@ void respawnParticle(Particle& particle, glm::vec3 firePos) {
 
 void updateParticles(float deltaTime, glm::vec3 firePos) {
 
-    int newParticles = (int)(deltaTime * 500.0f); // 500 particule/secund
+    int newParticles = (int)(deltaTime * 200.0f); // 500 particule/secund
     int particlesSpawned = 0;
 
     for (int i = 0; i < MAX_PARTICLES; i++) {
@@ -898,6 +1083,26 @@ void updateParticles(float deltaTime, glm::vec3 firePos) {
 
 void renderScene() {
 	
+
+    if (renderShadows) {
+        // ===== SHADOW PASS - render depth map =====
+        calculateLightSpaceMatrix();
+
+        glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
+        glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
+        glClear(GL_DEPTH_BUFFER_BIT);
+
+		// render scene from light's point of view
+        depthMapShader.useShaderProgram();
+        renderDepthMap(depthMapShader, false);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		// reset viewport
+        glViewport(0, 0, retina_width, retina_height);
+    }
+
+
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
@@ -915,6 +1120,14 @@ void renderScene() {
 	lightShader.useShaderProgram();
     glUniformMatrix4fv(viewLocL, 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(projLocL, 1, GL_FALSE, glm::value_ptr(projection)); //for window resize
+
+    // Bind shadow map la texture unit 1
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, shadowMapTexture);
+
+    // Trimite lightSpaceMatrix la shader
+    GLint lightSpaceMatrixLoc = glGetUniformLocation(lightShader.shaderProgram, "lightSpaceMatrix");
+    glUniformMatrix4fv(lightSpaceMatrixLoc, 1, GL_FALSE, glm::value_ptr(lightSpaceMatrix));
 
     // transfrom light position from world space to view space
     glm::vec4 lightPosEye = view * glm::vec4(firePos, 1.0f);
@@ -934,16 +1147,17 @@ void renderScene() {
     normalMatrix = glm::mat3(glm::transpose(glm::inverse(view * model)));
     glUniformMatrix3fv(normalMatrixLocL, 1, GL_FALSE, glm::value_ptr(normalMatrix));
 
+	//light color based on time of day
     glm::vec3 currentLightColor = sunOn ? daySunColor : nightSunColor;
     glUniform3fv(lightColorLoc, 1, glm::value_ptr(currentLightColor));
 
+	// render objects
 	renderMatterhornParts(lightShader);
 	renderPenguin(lightShader);
 	renderAstronaut(lightShader);
     renderTent(lightShader);
     renderFirePlace(lightShader);
     renderHiPenguin(lightShader);
-
 
 }
 
@@ -965,6 +1179,7 @@ int main(int argc, const char * argv[]) {
     initOpenGLState();
 	initModels();
 	initShaders();
+	initShadowMap();
 	initUniforms();
 
 	glCheckError();
