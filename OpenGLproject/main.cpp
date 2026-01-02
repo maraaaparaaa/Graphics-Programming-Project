@@ -66,9 +66,10 @@ glm::vec3 nightSunColor = glm::vec3(0.17f);
 
 // camera
 gps::Camera myCamera(
-    glm::vec3(0.0f, 5.0f, 15.0f),
-    glm::vec3(0.0f, 5.0f, -10.0f),
-    glm::vec3(0.0f, 1.0f, 0.0f));
+	glm::vec3(-2874.046387f, -870.948303f, 5946.952637f), // camera position
+	glm::vec3(-2874.046387f, -870.948303f, 5945.952637f), // camera target
+	glm::vec3(0.0f, 1.0f, 0.0f)); // camera up
+
 
 GLfloat cameraSpeed = 10.0f;
 
@@ -85,6 +86,7 @@ gps::Model3D tent;
 gps::Model3D skis;
 gps::Model3D snowboard;
 gps::Model3D goggles;
+gps::Model3D backpack;
 
 gps::Model3D penguinBody;
 gps::Model3D penguinWingL;
@@ -107,6 +109,7 @@ GLuint tentTexture;
 GLuint skisTexture;
 GLuint snowboardTexture;
 GLuint gogglesTexture;
+GLuint backpackTexture;
 
 // mouse variables
 float lastX = 400, lastY = 300; // initial pos, middle
@@ -167,11 +170,15 @@ struct CameraCollider {
 	float radius;
 };
 
+CameraCollider cameraCollider = { myCamera.getCameraPosition(), 2.0f };
+
 struct Penguin {
     glm::vec3 position;
 	float radius;
 	glm::vec3 velocity;
 };
+
+std::vector<Penguin> penguins;
 
 GLenum glCheckError_(const char *file, int line)
 {
@@ -359,6 +366,71 @@ void loadSky() {
     
 }
 
+void initPenguinsVector() {
+	penguins.clear();
+
+	float radius = 90.0f;
+	glm::vec3 velocity = glm::vec3(0.0f);
+
+    // hi penguin 
+    penguins.push_back({
+        glm::vec3(-2050.9f, -877.6f, 5533.9f),  // world pos (X, Y, Z)
+        radius,                                   
+        velocity                          
+        });
+
+	// second penguin
+    penguins.push_back({
+        glm::vec3(7169.0f, 562.46f, 7153.5f),  // world pos (X, Y, Z)
+        radius,
+        velocity
+        });
+
+	// third penguin
+    penguins.push_back({
+        glm::vec3(7826.27f, 587.341f, 7525.59f),  
+        radius,
+        velocity
+        });
+
+    penguins.push_back({
+        glm::vec3(7776.78f, 604.0f, 7703.01f),  
+        radius,
+        velocity
+        });
+
+    penguins.push_back({
+        glm::vec3(7299.77f, 601.69f, 7888.11f),  
+        radius,
+        velocity
+        });
+
+    penguins.push_back({
+        glm::vec3(7603.5f, 634.356f, 8321.27f),  
+        radius,
+        velocity
+        });
+
+    penguins.push_back({
+        glm::vec3(7540.21f, 640.78f, 8546.02f),  
+        radius,
+        velocity
+        });
+
+    penguins.push_back({
+        glm::vec3(7011.57f, 577.706f, 8123.4f),  
+        radius,
+        velocity
+        });
+
+    penguins.push_back({
+        glm::vec3(-1827.53f, -872.173f, 5726.33f),  
+        radius,
+        velocity
+        });
+
+}
+
 void initModels() {
 	matterhorn.LoadModel("models/Matterhorn/Matterhornbig.obj");
 	matterhornTexture = matterhorn.ReadTextureFromFile("models/Matterhorn/Matterhorn.jpg");
@@ -404,6 +476,11 @@ void initModels() {
 
 	goggles.LoadModel("models/Goggles/goggles.obj");
 	gogglesTexture = goggles.ReadTextureFromFile("models/Goggles/gogglesTexture.jpg");
+
+	backpack.LoadModel("models/Backpack/backpack.obj");
+	backpackTexture = backpack.ReadTextureFromFile("models/Backpack/backpackTexture.jpg");
+
+    initPenguinsVector();
 
 
     for (int i = 0; i < MAX_PARTICLES; i++)
@@ -851,112 +928,112 @@ void renderHiPenguin(gps::Shader shader) {
     penguinWingR.Draw(shader);
 }
 
-void renderTent(gps::Shader shader) {
-    shader.useShaderProgram();
-
-    GLint objLightLoc =
-        glGetUniformLocation(lightShader.shaderProgram, "objectLightMultiplier");
-    glUniform1f(objLightLoc, 1.0f);
-    GLint shininessLoc =
-        glGetUniformLocation(lightShader.shaderProgram, "shininess");
-    GLint specStrengthLoc =
-        glGetUniformLocation(lightShader.shaderProgram, "specularStrength");
-
-    glUniform1f(shininessLoc, 32.0f);
-    glUniform1f(specStrengthLoc, 0.3f);
-
-    glActiveTexture(GL_TEXTURE0);
-    glUniform1i(glGetUniformLocation(shader.shaderProgram, "diffuseTexture"), 0);
-
-    glBindTexture(GL_TEXTURE_2D, tentTexture);
-    tent.Draw(shader);
-}
-
-void renderFirePlace(gps::Shader shader) {
-    shader.useShaderProgram();
-    glActiveTexture(GL_TEXTURE0);
-    glUniform1i(glGetUniformLocation(shader.shaderProgram, "diffuseTexture"), 0);
-    glBindTexture(GL_TEXTURE_2D, fireTexture);
-    firePlace.Draw(shader);
-}
-
-void renderSkis(gps::Shader shader) {
-    shader.useShaderProgram();
-
-    GLint objLightLoc =
-        glGetUniformLocation(lightShader.shaderProgram, "objectLightMultiplier");
-    glUniform1f(objLightLoc, 2.0f);
-    GLint shininessLoc =
-        glGetUniformLocation(lightShader.shaderProgram, "shininess");
-    GLint specStrengthLoc =
-        glGetUniformLocation(lightShader.shaderProgram, "specularStrength");
-
-    glUniform1f(shininessLoc, 64.0f);
-    glUniform1f(specStrengthLoc, 0.6f);
-
-    glActiveTexture(GL_TEXTURE0);
-    glUniform1i(glGetUniformLocation(shader.shaderProgram, "diffuseTexture"), 0);
-    glBindTexture(GL_TEXTURE_2D, skisTexture);
-    skis.Draw(shader);
-}
-
-void renderSnowboard(gps::Shader shader) {
-    shader.useShaderProgram();
-
-    GLint objLightLoc =
-        glGetUniformLocation(lightShader.shaderProgram, "objectLightMultiplier");
-    glUniform1f(objLightLoc, 1.0f);
-    GLint shininessLoc =
-        glGetUniformLocation(lightShader.shaderProgram, "shininess");
-    GLint specStrengthLoc =
-        glGetUniformLocation(lightShader.shaderProgram, "specularStrength");
-
-    glUniform1f(shininessLoc, 32.0f);
-    glUniform1f(specStrengthLoc, 0.3f);
-
-    glActiveTexture(GL_TEXTURE0);
-    glUniform1i(glGetUniformLocation(shader.shaderProgram, "diffuseTexture"), 0);
-    glBindTexture(GL_TEXTURE_2D, snowboardTexture);
-    snowboard.Draw(shader);
-}
-
-void renderGoggles(gps::Shader shader) {
-    shader.useShaderProgram();
-    GLint objLightLoc =
-        glGetUniformLocation(lightShader.shaderProgram, "objectLightMultiplier");
-    glUniform1f(objLightLoc, 2.0f);
-    GLint shininessLoc =
-        glGetUniformLocation(lightShader.shaderProgram, "shininess");
-    GLint specStrengthLoc =
-        glGetUniformLocation(lightShader.shaderProgram, "specularStrength");
-    glUniform1f(shininessLoc, 64.0f);
-    glUniform1f(specStrengthLoc, 0.3f);
-    glActiveTexture(GL_TEXTURE0);
-    glUniform1i(glGetUniformLocation(shader.shaderProgram, "diffuseTexture"), 0);
-    glBindTexture(GL_TEXTURE_2D, gogglesTexture);
-    goggles.Draw(shader);
-}
-
-void renderAstronaut(gps::Shader shader) {
-	shader.useShaderProgram();
-
-    GLint objLightLoc =
-        glGetUniformLocation(lightShader.shaderProgram, "objectLightMultiplier");
-    glUniform1f(objLightLoc, 1.0f);
-    GLint shininessLoc =
-        glGetUniformLocation(lightShader.shaderProgram, "shininess");
-    GLint specStrengthLoc =
-        glGetUniformLocation(lightShader.shaderProgram, "specularStrength");
-
-    glUniform1f(shininessLoc, 32.0f);
-    glUniform1f(specStrengthLoc, 0.3f);
-
-	glActiveTexture(GL_TEXTURE0);
-	glUniform1i(glGetUniformLocation(shader.shaderProgram, "diffuseTexture"), 0);
-
-	glBindTexture(GL_TEXTURE_2D, astronautTexture);
-	astronaut.Draw(shader);
-}
+//void renderTent(gps::Shader shader) {
+//    shader.useShaderProgram();
+//
+//    GLint objLightLoc =
+//        glGetUniformLocation(lightShader.shaderProgram, "objectLightMultiplier");
+//    glUniform1f(objLightLoc, 1.0f);
+//    GLint shininessLoc =
+//        glGetUniformLocation(lightShader.shaderProgram, "shininess");
+//    GLint specStrengthLoc =
+//        glGetUniformLocation(lightShader.shaderProgram, "specularStrength");
+//
+//    glUniform1f(shininessLoc, 32.0f);
+//    glUniform1f(specStrengthLoc, 0.3f);
+//
+//    glActiveTexture(GL_TEXTURE0);
+//    glUniform1i(glGetUniformLocation(shader.shaderProgram, "diffuseTexture"), 0);
+//
+//    glBindTexture(GL_TEXTURE_2D, tentTexture);
+//    tent.Draw(shader);
+//}
+//
+//void renderFirePlace(gps::Shader shader) {
+//    shader.useShaderProgram();
+//    glActiveTexture(GL_TEXTURE0);
+//    glUniform1i(glGetUniformLocation(shader.shaderProgram, "diffuseTexture"), 0);
+//    glBindTexture(GL_TEXTURE_2D, fireTexture);
+//    firePlace.Draw(shader);
+//}
+//
+//void renderSkis(gps::Shader shader) {
+//    shader.useShaderProgram();
+//
+//    GLint objLightLoc =
+//        glGetUniformLocation(lightShader.shaderProgram, "objectLightMultiplier");
+//    glUniform1f(objLightLoc, 2.0f);
+//    GLint shininessLoc =
+//        glGetUniformLocation(lightShader.shaderProgram, "shininess");
+//    GLint specStrengthLoc =
+//        glGetUniformLocation(lightShader.shaderProgram, "specularStrength");
+//
+//    glUniform1f(shininessLoc, 64.0f);
+//    glUniform1f(specStrengthLoc, 0.6f);
+//
+//    glActiveTexture(GL_TEXTURE0);
+//    glUniform1i(glGetUniformLocation(shader.shaderProgram, "diffuseTexture"), 0);
+//    glBindTexture(GL_TEXTURE_2D, skisTexture);
+//    skis.Draw(shader);
+//}
+//
+//void renderSnowboard(gps::Shader shader) {
+//    shader.useShaderProgram();
+//
+//    GLint objLightLoc =
+//        glGetUniformLocation(lightShader.shaderProgram, "objectLightMultiplier");
+//    glUniform1f(objLightLoc, 1.0f);
+//    GLint shininessLoc =
+//        glGetUniformLocation(lightShader.shaderProgram, "shininess");
+//    GLint specStrengthLoc =
+//        glGetUniformLocation(lightShader.shaderProgram, "specularStrength");
+//
+//    glUniform1f(shininessLoc, 32.0f);
+//    glUniform1f(specStrengthLoc, 0.3f);
+//
+//    glActiveTexture(GL_TEXTURE0);
+//    glUniform1i(glGetUniformLocation(shader.shaderProgram, "diffuseTexture"), 0);
+//    glBindTexture(GL_TEXTURE_2D, snowboardTexture);
+//    snowboard.Draw(shader);
+//}
+//
+//void renderGoggles(gps::Shader shader) {
+//    shader.useShaderProgram();
+//    GLint objLightLoc =
+//        glGetUniformLocation(lightShader.shaderProgram, "objectLightMultiplier");
+//    glUniform1f(objLightLoc, 2.0f);
+//    GLint shininessLoc =
+//        glGetUniformLocation(lightShader.shaderProgram, "shininess");
+//    GLint specStrengthLoc =
+//        glGetUniformLocation(lightShader.shaderProgram, "specularStrength");
+//    glUniform1f(shininessLoc, 64.0f);
+//    glUniform1f(specStrengthLoc, 0.3f);
+//    glActiveTexture(GL_TEXTURE0);
+//    glUniform1i(glGetUniformLocation(shader.shaderProgram, "diffuseTexture"), 0);
+//    glBindTexture(GL_TEXTURE_2D, gogglesTexture);
+//    goggles.Draw(shader);
+//}
+//
+//void renderAstronaut(gps::Shader shader) {
+//	shader.useShaderProgram();
+//
+//    GLint objLightLoc =
+//        glGetUniformLocation(lightShader.shaderProgram, "objectLightMultiplier");
+//    glUniform1f(objLightLoc, 1.0f);
+//    GLint shininessLoc =
+//        glGetUniformLocation(lightShader.shaderProgram, "shininess");
+//    GLint specStrengthLoc =
+//        glGetUniformLocation(lightShader.shaderProgram, "specularStrength");
+//
+//    glUniform1f(shininessLoc, 32.0f);
+//    glUniform1f(specStrengthLoc, 0.3f);
+//
+//	glActiveTexture(GL_TEXTURE0);
+//	glUniform1i(glGetUniformLocation(shader.shaderProgram, "diffuseTexture"), 0);
+//
+//	glBindTexture(GL_TEXTURE_2D, astronautTexture);
+//	astronaut.Draw(shader);
+//}
 
 void renderObjects(gps::Shader shader) {
     shader.useShaderProgram();
@@ -986,6 +1063,10 @@ void renderObjects(gps::Shader shader) {
     glBindTexture(GL_TEXTURE_2D, fireTexture);
     firePlace.Draw(shader);
 
+    // Backpack
+    glBindTexture(GL_TEXTURE_2D, backpackTexture);
+    backpack.Draw(shader);
+
 	// Skis and Goggles share same material properties except specStrength
     glUniform1f(objLightLoc, 2.0f);
     glUniform1f(shininessLoc, 64.0f);
@@ -999,6 +1080,7 @@ void renderObjects(gps::Shader shader) {
     glUniform1f(specStrengthLoc, 0.3f);
     glBindTexture(GL_TEXTURE_2D, gogglesTexture);
     goggles.Draw(shader);
+
 }
 
 void renderParticles(gps::Shader& shader, glm::vec3 firePos, GLuint particleVAO) {
@@ -1238,23 +1320,26 @@ bool checkCameraCollision(const CameraCollider& cam, const Penguin& penguin) {
 }
 
 void resolveCameraCollision(CameraCollider& cam, const Penguin& penguin) {
-	glm::vec3 direction = cam.position - penguin.position;
-	float distance = glm::length(direction);
-	float overlap = (cam.radius + penguin.radius) - distance;
+	//vect from penguin to camera
+    glm::vec3 direction = cam.position - penguin.position;
+    float distance = glm::length(direction);
 
-    if (overlap > 0.0f) {
-        if (distance > 0.0f) {
-			// move camera out of collision
-            glm::vec3 correction = glm::normalize(direction) * overlap;
+	// overlap of spheres
+    float overlap = (cam.radius + penguin.radius) - distance;
+
+	if (overlap > 0.0f) {  // if there's a collision
+		if (distance > 0.0f) {  // camera not exactly at penguin position
+			// normalize direction
+            glm::vec3 pushDirection = glm::normalize(direction);
+
+			// push camera out of collision
+            glm::vec3 correction = pushDirection * overlap;
             cam.position += correction;
-
-			// stop camera movement for this frame
-            //attemptedMove = glm::vec3(0.0f);
         }
         else {
-			// if camera and penguin are at the same position, move camera along x axis
-            cam.position += glm::vec3(overlap, 0.0f, 0.0f);
-            //attemptedMove = glm::vec3(0.0f);
+			// camera exactly at penguin position
+			// push camera along x axis
+            cam.position += glm::vec3(cam.radius + penguin.radius, 0.0f, 0.0f);
         }
     }
 }
@@ -1372,16 +1457,29 @@ int main(int argc, const char * argv[]) {
 
         processMovement();
 
+
+		// update camera collider position
+        cameraCollider.position = myCamera.getCameraPosition(); 
+
+		// check collision with penguins
+        for (auto& penguin : penguins) {
+            if (checkCameraCollision(cameraCollider, penguin)) {
+                // detected collision
+                resolveCameraCollision(cameraCollider, penguin);
+				// update camera position based on collider
+                myCamera.setCameraPosition(cameraCollider.position);
+            }
+        }
+
 		updateParticles(deltaTime, firePos);
 
 	    renderScene();
 		renderParticles(fireShader, firePos, particleVAO); // render fire particles
 
-        //printf("Camerapos = %f %f %f \n", myCamera.getCameraPosition().x, myCamera.getCameraPosition().y, myCamera.getCameraPosition().z);
+        printf("Camerapos = %f %f %f \n", myCamera.getCameraPosition().x, myCamera.getCameraPosition().y, myCamera.getCameraPosition().z);
 
 		glfwPollEvents();
 		glfwSwapBuffers(myWindow.getWindow());
-
 
 		glCheckError();
 	}

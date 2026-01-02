@@ -52,4 +52,8 @@ namespace gps {
     glm::vec3 Camera::getCameraPosition() {
         return cameraPosition;
 	}
+
+    void Camera::setCameraPosition(glm::vec3 newPosition) {
+        this->cameraPosition = newPosition;
+    }
 }
