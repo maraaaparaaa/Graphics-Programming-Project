@@ -23,6 +23,7 @@ namespace gps {
         void rotate(float pitch, float yaw);
         glm::vec3 getCameraPosition();
         void setCameraPosition(glm::vec3 newPosition);
+		glm::vec3 getCameraFrontDirection();
         
     private:
         glm::vec3 cameraPosition;

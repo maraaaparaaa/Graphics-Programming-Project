@@ -40,6 +40,7 @@ glm::mat3 normalMatrix;
 // light parameters
 glm::vec3 lightDir;
 glm::vec3 lightColor;
+glm::vec3 pointLightColor;
 
 // shader uniform locations
 GLint modelLoc;
@@ -63,6 +64,8 @@ GLint pointLightColorLoc;
 bool sunOn = true;
 glm::vec3 daySunColor = glm::vec3(1.0f, 1.0f, 0.95f);
 glm::vec3 nightSunColor = glm::vec3(0.17f);
+glm::vec3 dayFireColor = glm::vec3(0.9f, 0.5f, 0.2f);
+glm::vec3 nightFireColor = glm::vec3(3.0f, 2.0f, 0.8f);
 
 // camera
 gps::Camera myCamera(
@@ -180,6 +183,18 @@ struct Penguin {
 
 std::vector<Penguin> penguins;
 
+// Camera animation system - Catmull-Rom splines
+struct CameraKeyframe {
+    glm::vec3 position;
+    glm::vec3 target;
+    float timestamp;
+};
+
+std::vector<CameraKeyframe> cameraPath;
+bool isPlayingAnimation = false;
+float animationStartTime = 0.0f;
+int currentKeyframe = 0;
+
 GLenum glCheckError_(const char *file, int line)
 {
 	GLenum errorCode;
@@ -273,6 +288,29 @@ void keyboardCallback(GLFWwindow* window, int key, int scancode, int action, int
     else
         cameraSpeed = 10.0f;
 
+
+	// P - Print current camera position and target (for keyframe)
+    if (key == GLFW_KEY_P && action == GLFW_PRESS) {
+        glm::vec3 pos = myCamera.getCameraPosition();
+        glm::vec3 target = pos + myCamera.getCameraFrontDirection();
+
+        std::cout << "\n=== KEYFRAME ===" << std::endl;
+        std::cout << "Position: glm::vec3(" << pos.x << "f, " << pos.y << "f, " << pos.z << "f)" << std::endl;
+        std::cout << "Target:   glm::vec3(" << target.x << "f, " << target.y << "f, " << target.z << "f)" << std::endl;
+        std::cout << "===============\n" << std::endl;
+    }
+
+    // K - Start/Stop animation
+    if (key == GLFW_KEY_K && action == GLFW_PRESS) {
+        isPlayingAnimation = !isPlayingAnimation;
+        if (isPlayingAnimation) {
+            animationStartTime = glfwGetTime();
+            std::cout << "Animation STARTED" << std::endl;
+        }
+        else {
+            std::cout << "Animation STOPPED" << std::endl;
+        }
+    }
 }
 
 void mouseCallback(GLFWwindow* window, double xpos, double ypos) {
@@ -639,7 +677,7 @@ void initUniforms() {
     lightPosLoc = glGetUniformLocation(lightShader.shaderProgram, "lightPosEye");
     pointLightColorLoc = glGetUniformLocation(lightShader.shaderProgram, "pointLightColor");
 
-    glm::vec3 pointLightColor = glm::vec3(3.0f, 2.0f, 0.8f); // fire color
+    pointLightColor = glm::vec3(3.0f, 2.0f, 0.8f); // fire color
     glm::vec4 lightPosEye = view * glm::vec4(firePos, 1.0f);
 
     glUniform3fv(lightPosLoc, 1, glm::value_ptr(glm::vec3(lightPosEye)));
@@ -658,6 +696,94 @@ void initUniforms() {
 
     glUniformMatrix4fv(viewLocFire, 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(projLocFire, 1, GL_FALSE, glm::value_ptr(projection));
+
+}
+
+void setupCameraAnimation() {
+
+	cameraPath.clear();
+
+    cameraPath.push_back({ glm::vec3(-3173.09f, -840.953f, 6254.48f), glm::vec3(-3173.28f, -840.981f, 6253.5f), 0.0f });
+    cameraPath.push_back({ glm::vec3(-3173.09f, -840.953f, 6254.48f), glm::vec3(-3172.47f, -840.956f, 6253.7f), 5.0f });
+    cameraPath.push_back({ glm::vec3(-3173.09f, -840.953f, 6254.48f), glm::vec3(-3172.1f, -840.975f, 6254.38f), 10.0f });
+    
+    cameraPath.push_back({ glm::vec3(-2610.85f, -874.628f, 5707.93f), glm::vec3(-2610.39f, -874.686f, 5707.05f), 20.0f });
+    cameraPath.push_back({ glm::vec3(-2561.01f, -878.395f, 5709.29f), glm::vec3(-2560.01f, -878.4f, 5709.39f), 25.0f });
+    
+    cameraPath.push_back({ glm::vec3(1266.02f, -423.638f, 6580.23f), glm::vec3(1267.0f, -423.483f, 6580.39f), 30.0f });
+   
+    cameraPath.push_back({ glm::vec3(4724.95f, 259.796f, 7422.56f), glm::vec3(4725.94f, 259.834f, 7422.71f), 35.0f });
+    
+    cameraPath.push_back({ glm::vec3(6502.12f, 548.279f, 7501.83f), glm::vec3(6503.08f, 548.354f, 7501.56f), 45.0f });
+    cameraPath.push_back({ glm::vec3(6698.36f, 564.492f, 7536.36f), glm::vec3(6699.31f, 564.579f, 7536.66f), 50.0f });
+    cameraPath.push_back({ glm::vec3(6922.22f, 582.157f, 7660.76f), glm::vec3(6922.83f, 582.115f, 7661.56f), 55.0f });
+    cameraPath.push_back({ glm::vec3(7151.28f, 609.193f, 8050.28f), glm::vec3(7151.92f, 609.233f, 8051.04f), 60.0f });
+    cameraPath.push_back({ glm::vec3(6788.12f, 594.169f, 8404.82f), glm::vec3(6787.2f, 594.095f, 8404.42f), 65.0f });
+
+}
+
+// interpolation function for Catmull-Rom splines
+glm::vec3 catmullRomSpline(const glm::vec3& p0, const glm::vec3& p1, const glm::vec3& p2, const glm::vec3& p3, float t) {
+    float t2 = t * t;
+    float t3 = t2 * t;
+    return 0.5f * ((2.0f * p1) +
+        (-p0 + p2) * t +
+        (2.0f * p0 - 5.0f * p1 + 4.0f * p2 - p3) * t2 +
+        (-p0 + 3.0f * p1 - 3.0f * p2 + p3) * t3);
+}
+
+void updateCameraAnimation(float currentTime) {
+
+    if (!isPlayingAnimation || cameraPath.size() < 2) return;
+
+    float animTime = currentTime - animationStartTime;
+
+	float totalDuration = cameraPath.back().timestamp;
+    if (animTime > totalDuration) {
+		animationStartTime = currentTime;
+		animTime = 0.0f;
+    }
+
+    int nextKeyframe = 0;
+    for (size_t i = 0; i < cameraPath.size(); i++) {
+        if (cameraPath[i].timestamp > animTime) {
+            nextKeyframe = i;
+            break;
+        }
+    }
+
+    if (nextKeyframe == 0) nextKeyframe = 1;
+    int prevKeyframe = nextKeyframe - 1;
+
+	// calculate interpolation factor t
+    float t1 = cameraPath[prevKeyframe].timestamp;
+    float t2 = cameraPath[nextKeyframe].timestamp;
+    float t = (animTime - t1) / (t2 - t1);  // 0.0 -> 1.0
+
+	// linear interpolation between keyframes
+    glm::vec3 pos = glm::mix(
+        cameraPath[prevKeyframe].position,
+        cameraPath[nextKeyframe].position,
+        t
+    );
+
+    glm::vec3 target = glm::mix(
+        cameraPath[prevKeyframe].target,
+        cameraPath[nextKeyframe].target,
+        t
+    );
+
+	// update camera
+    myCamera.setCameraPosition(pos);
+
+	// calculate direction vector
+    glm::vec3 direction = glm::normalize(target - pos);
+
+	// convert direction to pitch and yaw
+    pitch = glm::degrees(asin(direction.y));
+    yaw = glm::degrees(atan2(direction.z, direction.x));
+
+    myCamera.rotate(pitch, yaw);
 
 }
 
@@ -927,113 +1053,6 @@ void renderHiPenguin(gps::Shader shader) {
     glUniformMatrix3fv(normalMatrixLocL, 1, GL_FALSE, glm::value_ptr(normalMatrix));
     penguinWingR.Draw(shader);
 }
-
-//void renderTent(gps::Shader shader) {
-//    shader.useShaderProgram();
-//
-//    GLint objLightLoc =
-//        glGetUniformLocation(lightShader.shaderProgram, "objectLightMultiplier");
-//    glUniform1f(objLightLoc, 1.0f);
-//    GLint shininessLoc =
-//        glGetUniformLocation(lightShader.shaderProgram, "shininess");
-//    GLint specStrengthLoc =
-//        glGetUniformLocation(lightShader.shaderProgram, "specularStrength");
-//
-//    glUniform1f(shininessLoc, 32.0f);
-//    glUniform1f(specStrengthLoc, 0.3f);
-//
-//    glActiveTexture(GL_TEXTURE0);
-//    glUniform1i(glGetUniformLocation(shader.shaderProgram, "diffuseTexture"), 0);
-//
-//    glBindTexture(GL_TEXTURE_2D, tentTexture);
-//    tent.Draw(shader);
-//}
-//
-//void renderFirePlace(gps::Shader shader) {
-//    shader.useShaderProgram();
-//    glActiveTexture(GL_TEXTURE0);
-//    glUniform1i(glGetUniformLocation(shader.shaderProgram, "diffuseTexture"), 0);
-//    glBindTexture(GL_TEXTURE_2D, fireTexture);
-//    firePlace.Draw(shader);
-//}
-//
-//void renderSkis(gps::Shader shader) {
-//    shader.useShaderProgram();
-//
-//    GLint objLightLoc =
-//        glGetUniformLocation(lightShader.shaderProgram, "objectLightMultiplier");
-//    glUniform1f(objLightLoc, 2.0f);
-//    GLint shininessLoc =
-//        glGetUniformLocation(lightShader.shaderProgram, "shininess");
-//    GLint specStrengthLoc =
-//        glGetUniformLocation(lightShader.shaderProgram, "specularStrength");
-//
-//    glUniform1f(shininessLoc, 64.0f);
-//    glUniform1f(specStrengthLoc, 0.6f);
-//
-//    glActiveTexture(GL_TEXTURE0);
-//    glUniform1i(glGetUniformLocation(shader.shaderProgram, "diffuseTexture"), 0);
-//    glBindTexture(GL_TEXTURE_2D, skisTexture);
-//    skis.Draw(shader);
-//}
-//
-//void renderSnowboard(gps::Shader shader) {
-//    shader.useShaderProgram();
-//
-//    GLint objLightLoc =
-//        glGetUniformLocation(lightShader.shaderProgram, "objectLightMultiplier");
-//    glUniform1f(objLightLoc, 1.0f);
-//    GLint shininessLoc =
-//        glGetUniformLocation(lightShader.shaderProgram, "shininess");
-//    GLint specStrengthLoc =
-//        glGetUniformLocation(lightShader.shaderProgram, "specularStrength");
-//
-//    glUniform1f(shininessLoc, 32.0f);
-//    glUniform1f(specStrengthLoc, 0.3f);
-//
-//    glActiveTexture(GL_TEXTURE0);
-//    glUniform1i(glGetUniformLocation(shader.shaderProgram, "diffuseTexture"), 0);
-//    glBindTexture(GL_TEXTURE_2D, snowboardTexture);
-//    snowboard.Draw(shader);
-//}
-//
-//void renderGoggles(gps::Shader shader) {
-//    shader.useShaderProgram();
-//    GLint objLightLoc =
-//        glGetUniformLocation(lightShader.shaderProgram, "objectLightMultiplier");
-//    glUniform1f(objLightLoc, 2.0f);
-//    GLint shininessLoc =
-//        glGetUniformLocation(lightShader.shaderProgram, "shininess");
-//    GLint specStrengthLoc =
-//        glGetUniformLocation(lightShader.shaderProgram, "specularStrength");
-//    glUniform1f(shininessLoc, 64.0f);
-//    glUniform1f(specStrengthLoc, 0.3f);
-//    glActiveTexture(GL_TEXTURE0);
-//    glUniform1i(glGetUniformLocation(shader.shaderProgram, "diffuseTexture"), 0);
-//    glBindTexture(GL_TEXTURE_2D, gogglesTexture);
-//    goggles.Draw(shader);
-//}
-//
-//void renderAstronaut(gps::Shader shader) {
-//	shader.useShaderProgram();
-//
-//    GLint objLightLoc =
-//        glGetUniformLocation(lightShader.shaderProgram, "objectLightMultiplier");
-//    glUniform1f(objLightLoc, 1.0f);
-//    GLint shininessLoc =
-//        glGetUniformLocation(lightShader.shaderProgram, "shininess");
-//    GLint specStrengthLoc =
-//        glGetUniformLocation(lightShader.shaderProgram, "specularStrength");
-//
-//    glUniform1f(shininessLoc, 32.0f);
-//    glUniform1f(specStrengthLoc, 0.3f);
-//
-//	glActiveTexture(GL_TEXTURE0);
-//	glUniform1i(glGetUniformLocation(shader.shaderProgram, "diffuseTexture"), 0);
-//
-//	glBindTexture(GL_TEXTURE_2D, astronautTexture);
-//	astronaut.Draw(shader);
-//}
 
 void renderObjects(gps::Shader shader) {
     shader.useShaderProgram();
@@ -1414,6 +1433,9 @@ void renderScene() {
     glm::vec3 currentLightColor = sunOn ? daySunColor : nightSunColor;
     glUniform3fv(lightColorLoc, 1, glm::value_ptr(currentLightColor));
 
+	glm::vec3 currentFireColor = sunOn ? dayFireColor : nightFireColor;
+	glUniform3fv(pointLightColorLoc, 1, glm::value_ptr(currentFireColor));
+
 	// render objects
 	renderMatterhornParts(lightShader);
 	renderPenguins(lightShader);
@@ -1444,6 +1466,8 @@ int main(int argc, const char * argv[]) {
 	initShadowMap();
 	initUniforms();
 
+	setupCameraAnimation();
+
 	glCheckError();
 
 	float lastFrame = 0.0f;
@@ -1455,28 +1479,34 @@ int main(int argc, const char * argv[]) {
 		float deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
 
-        processMovement();
-
-
-		// update camera collider position
-        cameraCollider.position = myCamera.getCameraPosition(); 
-
-		// check collision with penguins
-        for (auto& penguin : penguins) {
-            if (checkCameraCollision(cameraCollider, penguin)) {
-                // detected collision
-                resolveCameraCollision(cameraCollider, penguin);
-				// update camera position based on collider
-                myCamera.setCameraPosition(cameraCollider.position);
-            }
+        if(isPlayingAnimation) {
+            updateCameraAnimation(currentFrame);
         }
+        else {
+			processMovement();
+        }
+
+        if(!isPlayingAnimation) {
+            // update camera collider position
+            cameraCollider.position = myCamera.getCameraPosition();
+
+            // check collision with penguins
+            for (auto& penguin : penguins) {
+                if (checkCameraCollision(cameraCollider, penguin)) {
+                    // detected collision
+                    resolveCameraCollision(cameraCollider, penguin);
+                    // update camera position based on collider
+                    myCamera.setCameraPosition(cameraCollider.position);
+                }
+            }
+		}
 
 		updateParticles(deltaTime, firePos);
 
 	    renderScene();
 		renderParticles(fireShader, firePos, particleVAO); // render fire particles
 
-        printf("Camerapos = %f %f %f \n", myCamera.getCameraPosition().x, myCamera.getCameraPosition().y, myCamera.getCameraPosition().z);
+       // printf("Camerapos = %f %f %f \n", myCamera.getCameraPosition().x, myCamera.getCameraPosition().y, myCamera.getCameraPosition().z);
 
 		glfwPollEvents();
 		glfwSwapBuffers(myWindow.getWindow());
