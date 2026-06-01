@@ -57,13 +57,11 @@ An interactive 3D scene built with OpenGL featuring the Matterhorn mountain, dyn
 
 ## Project Structure
 
-\`\`\`
-├── models/          # 3D models (.obj) and textures
-├── shaders/         # GLSL vertex and fragment shaders
-├── OpenCVApplication.cpp  # Main application
-├── common.cpp / .h  # Utilities
-└── OpenCVApplication.sln  # Visual Studio solution
-\`\`\`
+    ├── models/                        # 3D models (.obj) and textures
+    ├── shaders/                       # GLSL vertex and fragment shaders
+    ├── OpenCVApplication.cpp          # Main application
+    ├── common.cpp / common.h          # Utilities
+    └── OpenCVApplication.sln          # Visual Studio solution
 
 ## Preview
 
